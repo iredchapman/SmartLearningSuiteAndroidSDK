@@ -1,0 +1,26 @@
+plugins {
+    id 'base'
+    id 'maven-publish'
+}
+
+group = project.hasProperty('group') ? project.group : 'com.github.leo-lv-github'
+version = project.hasProperty('version') ? project.version : '1.0.0'
+
+configurations.maybeCreate("default")
+
+def aarFile = file("iREdAndroidSDK.aar")
+artifacts.add("default", aarFile)
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = project.group
+            artifactId = 'iREdAndroidSDK'
+            version = project.version
+
+            artifact(aarFile) {
+                extension = 'aar'
+            }
+        }
+    }
+}
