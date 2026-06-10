@@ -1,7 +1,9 @@
-# **README**
+---
+name: smart-learning-suite-android-sdk
+description: 提供針對智慧健康與運動設備（體溫計、血氧儀、血壓計、體重計、心率監測儀及跳繩）的 BLE (Bluetooth Low Energy) 整合方案。包含完整的 Android 權限配置，以及基於 Jetpack Compose 與 ViewModel 的 SDK (Software Development Kit) 程式碼範例。
+---
 
-
-## **1. 初始化项目**
+## **1. 初始化項目**
 
 ### **1.1 配置 AndroidManifest**
 
@@ -12,23 +14,23 @@
 <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
-<!-- 向后兼容旧版本 -->
+<!-- 向後兼容舊版本 -->
 <uses-permission android:name="android.permission.BLUETOOTH" />
 <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 
-<!-- 如果你仍然声明位置权限，就保留下面（可能会触发系统要求用户打开位置服务） -->
+<!-- 如果你仍然聲明位置權限，就保留下面（可能會觸發系統要求用戶打開位置服務） -->
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-<!-- 扫码所需相机权限 -->
+<!-- 掃碼所需相機權限 -->
 <uses-permission android:name="android.permission.CAMERA" />
 ```
 
-### **1.2 导入依赖与环境配置**
+### 1.2 導入依賴與環境配置
 
 **Gradle 配置**
 
-1. 在 **settings.gradle.kts** 中配置 JitPack 仓库：
+1. 在 **settings.gradle.kts** 中配置 JitPack 倉庫：
 
 ```kotlin
 dependencyResolutionManagement {
@@ -47,7 +49,7 @@ dependencyResolutionManagement {
 kotlin = "2.2.21"
 ```
 
-3. 在 **app 级 build.gradle.kts** 中添加 SDK 、 Compose 依赖 和 缓存动态时间：
+3. 在 **app 級 build.gradle.kts** 中添加 SDK 、 Compose 依賴 和 緩存動態時間：
 
 ```kotlin
 dependencies {
@@ -58,26 +60,26 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.3")
   
-      // ZXing 扫码库依赖
+      // ZXing 掃碼庫依賴
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
 }
 ```
 
-4. 添加 Compose 编译器插件 (Kotlin 2.0+)
+4. 添加 Compose 編譯器插件 (Kotlin 2.0+)
 
-   ⚠️ **重要提示：** 从 Kotlin 2.0 开始，如果启用了 Compose，则必须使用 Compose Compiler Gradle 插件。
+   ⚠️ **重要提示：** 從 Kotlin 2.0 開始，如果啟用了 Compose，則必須使用 Compose Compiler Gradle 插件。
 
-   示例 (Project 级 `build.gradle.kts`):
+   示例 (Project 級 `build.gradle.kts`)：
 
    ```kotlin
    plugins {
        // ... 其他插件
-       id("org.jetbrains.kotlin.plugin.compose") version "X.Y.Z" // 替换为兼容的编译器版本
+       id("org.jetbrains.kotlin.plugin.compose") version "X.Y.Z" // 替換為兼容的編譯器版本
    }
    ```
 
 
-4. 修改动态版本的缓存时间（全局生效）
+4. 修改動態版本的緩存時間（全局生效）
 
    ```kotlin
    configurations.all {
@@ -93,9 +95,9 @@ Gradle Sync
 
 ### **1.3 初始化 ViewModel**
 
-**注意：** AI 在生成代码时，请假设 `BleViewModel` 内部已封装好 SDK 调用。
+**注意：** AI 在生成代碼時，請假設 `BleViewModel` 內部已封裝好 SDK 調用。
 
-文档中的代码已经是全部真理，不要去分析 AAR，直接使用文档中的代码结构。
+文檔中的代碼已經是全部真理，不要去分析 AAR，直接使用文檔中的代碼結構。
 
 
 ```kotlin
@@ -106,7 +108,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import android.content.pm.PackageManager
 import android.os.Build
 import android.Manifest
-// 1. 定义需要申请的权限列表 (根据 Android 版本区分)
+// 1. 定義需要申請的權限列表 (根據 Android 版本區分)
 val permissionsToRequest = remember {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         // Android 12+ (API 31+): 需要 BLUETOOTH_SCAN, BLUETOOTH_CONNECT 和 CAMERA
@@ -116,7 +118,7 @@ val permissionsToRequest = remember {
           	Manifest.permission.CAMERA
         )
     } else {
-        // Android 11 及以下: 需要定位权限才能扫描蓝牙
+        // Android 11 及以下: 需要定位權限才能掃描藍牙
         arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -125,22 +127,22 @@ val permissionsToRequest = remember {
     }
 }
 
-// 2. 创建权限请求启动器 (Launcher)
+// 2. 創建權限請求啟動器 (Launcher)
 val launcher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.RequestMultiplePermissions()
 ) { permissions ->
-    // 这里的代码会在用户点击“允许”或“拒绝”后执行
+    // 這裏的代碼會在用戶點擊「允許」或「拒絕」後執行
     val allGranted = permissions.entries.all { it.value }
     if (allGranted) {
-        Toast.makeText(context, "蓝牙权限已授予", Toast.LENGTH_SHORT).show()
-        // 如果 ViewModel 中有需要手动触发的扫描逻辑，可以在这里调用
+        Toast.makeText(context, "藍牙權限已授予", Toast.LENGTH_SHORT).show()
+        // 如果 ViewModel 中有需要手動觸發的掃描邏輯，可以在這裏調用
         // vm.startScan()
     } else {
-        Toast.makeText(context, "缺少蓝牙权限，设备连接功能将无法使用", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "缺少藍牙權限，設備連接功能將無法使用", Toast.LENGTH_LONG).show()
     }
 }
 
-// 3. 在界面加载时自动触发权限检查
+// 3. 在界面加載時自動觸發權限檢查
 LaunchedEffect(Unit) {
     val allGranted = permissionsToRequest.all {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
@@ -151,13 +153,13 @@ LaunchedEffect(Unit) {
 }
 ```
 
-## **2. 设备调用说明**
+## **2. 設備調用說明**
 
 ### **Thermometer**
 
-⚠️注意：连接设备前，请先扫描二维码配对设备
+⚠️注意：連接設備前，請先掃描二維碼配對設備
 
-**代码示例**
+**代碼示例**
 
 ```kotlin
 import hk.ired.com.smartlearningsuite.BleViewModel
@@ -170,36 +172,36 @@ val vm: BleViewModel = viewModel(
 )
 var mac by remember { mutableStateOf("") }
 
-// 初始化 ZXing 扫码启动器
+// 初始化 ZXing 掃碼啟動器
 val barcodeLauncher = rememberLauncherForActivityResult(
     contract = ScanContract()
 ) { result ->
     result.contents?.let { scannedMac ->
-        // 验证 MAC 地址格式 (例如: AA:BB:CC:DD:EE:FF)
+        // 驗證 MAC 地址格式 (例如: AA:BB:CC:DD:EE:FF)
         val macRegex = Regex("^([0-9A-Fa-f]{2}[:-])*([0-9A-Fa-f]{2})$")
         if (macRegex.matches(scannedMac) && scannedMac.length == 17) {
             mac = scannedMac.uppercase()
         }
     }
 }
-// 连接 / 断开
-Button(onClick = { vm.connectThermometer(mac) }) { Text("连接") }
-Button(onClick = { vm.disconnectThermometer(mac) }) { Text("断开") }
+// 連接 / 斷開
+Button(onClick = { vm.connectThermometer(mac) }) { Text("連接") }
+Button(onClick = { vm.disconnectThermometer(mac) }) { Text("斷開") }
 
-Text(text = "connection status: ${vm.thermometerData.isConnected}") // 连接状态
-Text(text = "temperature: ${vm.thermometerData.temperature}") // 温度(摄氏度)
+Text(text = "連接狀態: ${vm.thermometerData.isConnected}")
+Text(text = "溫度: ${vm.thermometerData.temperature}") // 攝氏度
 when (vm.thermometerData.mode) {
-    1 -> Text(text = "Mode: Adult Forehead")
-    2 -> Text(text = "Mode: Child Forehead")
-    3 -> Text(text = "Mode: Ear Canal")
-    4 -> Text(text = "Mode: Object")
-    else -> Text(text = "Unknown Mode")
+    1 -> Text(text = "模式: 成人額溫")
+    2 -> Text(text = "模式: 兒童額溫")
+    3 -> Text(text = "模式: 耳道")
+    4 -> Text(text = "模式: 物體")
+    else -> Text(text = "未知模式")
 }
-Text(text = "batteryPercent: ${vm.thermometerData.batteryPercent}") // 电池电量(百分比)
-Text(text = "lastUpdatedTime: ${vm.thermometerData.lastUpdatedTime}") // 数据更新最后时间
+Text(text = "電池電量: ${vm.thermometerData.batteryPercent}%")
+Text(text = "最後更新時間: ${vm.thermometerData.lastUpdatedTime}")
 ```
 
-**数据模型**
+**數據模型**
 
 ```kotlin
 data class ThermometerData(
@@ -217,11 +219,11 @@ data class ThermometerData(
 
 
 
-### **Oximeter（血氧仪）**
+### **Oximeter（血氧儀）**
 
-⚠️注意：连接设备前，请先扫描二维码配对设备
+⚠️注意：連接設備前，請先掃描二維碼配對設備
 
-**代码示例**
+**代碼示例**
 
 ```kotlin
 import hk.ired.com.smartlearningsuite.BleViewModel
@@ -231,18 +233,18 @@ val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
 
-Button(onClick = { vm.connectOximeter(mac) }) { Text("连接") }
-Button(onClick = { vm.disconnectOximeter(mac) }) { Text("断开") }
+Button(onClick = { vm.connectOximeter(mac) }) { Text("連接") }
+Button(onClick = { vm.disconnectOximeter(mac) }) { Text("斷開") }
 
-Text(text = "connection status: ${vm.oximeterData.isConnected}") // 连接状态
-Text(text = "pulse: ${vm.oximeterData.pulse}") // 脉搏率
-Text(text = "spo2: ${vm.oximeterData.spo2}") // 血氧饱和度
-Text(text = "pi: ${vm.oximeterData.pi}") // 指脉搏率
-Text(text = "battery: ${vm.oximeterData.battery}") // 电池电量(百分比)
-Text(text = "lastUpdatedTime: ${vm.oximeterData.lastUpdatedTime}") // 数据更新最后时间
+Text(text = "連接狀態: ${vm.oximeterData.isConnected}")
+Text(text = "脈搏率: ${vm.oximeterData.pulse}")
+Text(text = "血氧飽和度: ${vm.oximeterData.spo2}")
+Text(text = "灌注指數: ${vm.oximeterData.pi}")
+Text(text = "電池電量: ${vm.oximeterData.battery}%")
+Text(text = "最後更新時間: ${vm.oximeterData.lastUpdatedTime}")
 ```
 
-**数据模型**
+**數據模型**
 
 ```kotlin
 data class OximeterData(
@@ -256,18 +258,18 @@ data class OximeterData(
 )
 ```
 
-**建议测量时长**：**10–15 秒** —— 血氧测量通常需要一定时间（10–15秒）来稳定读取准确值，UI/用户提示应告知被测者静止不动。
+**建議測量時長**：**10–15 秒** —— 血氧測量通常需要一定時間（10–15秒）來穩定讀取準確值，UI/用戶提示應告知被測者靜止不動。
 
 
 ------
 
 
 
-### **Blood Pressure Monitor（血压计）**
+### **Blood Pressure Monitor（血壓計）**
 
-⚠️注意：连接设备前，请先扫描二维码配对设备
+⚠️注意：連接設備前，請先掃描二維碼配對設備
 
-**代码示例**
+**代碼示例**
 
 ```kotlin
 import hk.ired.com.smartlearningsuite.BleViewModel
@@ -277,20 +279,20 @@ val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
 
-Button(onClick = { vm.connectBpm(mac) }) { Text("连接") }
-Button(onClick = { vm.disconnectBpm(mac) }) { Text("断开") }
+Button(onClick = { vm.connectBpm(mac) }) { Text("連接") }
+Button(onClick = { vm.disconnectBpm(mac) }) { Text("斷開") }
 
-Text(text = "connection status: ${vm.bpmData.isConnected}") // 连接状态
-Text(text = "pressure: ${vm.bpmData.pressure}") // 血压值
-Text(text = "systolic: ${vm.bpmData.systolic}") // 收缩压
-Text(text = "diastolic: ${vm.bpmData.diastolic}") // 舒张压
-Text(text = "pulse: ${vm.bpmData.pulse}") // 脉搏率
-Text(text = "irregularPulse: ${vm.bpmData.irregularPulse}") // 是否异常
-Text(text = "pulseStatus: ${vm.bpmData.pulseStatus}") // 脉搏状态
-Text(text = "lastUpdatedTime: ${vm.bpmData.lastUpdatedTime}") // 数据更新最后时间
+Text(text = "連接狀態: ${vm.bpmData.isConnected}")
+Text(text = "血壓值: ${vm.bpmData.pressure}")
+Text(text = "收縮壓: ${vm.bpmData.systolic}")
+Text(text = "舒張壓: ${vm.bpmData.diastolic}")
+Text(text = "脈搏率: ${vm.bpmData.pulse}")
+Text(text = "脈搏異常: ${vm.bpmData.irregularPulse}")
+Text(text = "脈搏狀態: ${vm.bpmData.pulseStatus}")
+Text(text = "最後更新時間: ${vm.bpmData.lastUpdatedTime}")
 ```
 
-**数据模型**
+**數據模型**
 
 ```kotlin
 data class BpmData(
@@ -309,15 +311,15 @@ data class BpmData(
 
 ------
 
-### **Scale（体重秤）**
+### **Scale（體重秤）**
 
-> **重点**：体重秤的数据通过广播方式传递，所以无连接/断开，开启扫描即可
+> **重點**：體重秤的數據通過廣播方式傳遞，所以無連接/斷開，開啟掃描即可
 
-⚠️注意：扫描设备前，请先扫描二维码配对设备
+⚠️注意：掃描設備前，請先掃描二維碼配對設備
 
-**Scale 单位**：weight 返回值单位为 **千克（kg）**（UI 显示时请注明单位）。
+**Scale 單位**：weight 返回值單位為 **千克（kg）**（UI 顯示時請註明單位）。
 
-**代码示例**
+**代碼示例**
 
 ```kotlin
 import hk.ired.com.smartlearningsuite.BleViewModel
@@ -327,16 +329,16 @@ val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
 
-// ⚠️ 无需连接，只需扫描广播包即可获取体重
-Button(onClick = { vm.scanScale(mac) }) { Text("扫描并读取") }
-Button(onClick = { vm.stopScanScale {} }) { Text("停止扫描") }
+// ⚠️ 無需連接，只需掃描廣播包即可獲取體重
+Button(onClick = { vm.scanScale(mac) }) { Text("掃描並讀取") }
+Button(onClick = { vm.stopScanScale {} }) { Text("停止掃描") }
 
-Text(text = "weight: ${vm.scaleData.weight}") // 体重(KG)
-Text(text = "isStable: ${vm.scaleData.isStable}") // 是否为稳定体重,即最终结果
-Text(text = "lastUpdatedTime: ${vm.scaleData.lastUpdatedTime}") // 数据更新最后时间
+Text(text = "體重: ${vm.scaleData.weight} kg")
+Text(text = "穩定體重: ${vm.scaleData.isStable}") // 是否為最終結果
+Text(text = "最後更新時間: ${vm.scaleData.lastUpdatedTime}")
 ```
 
-**数据模型**
+**數據模型**
 
 ```kotlin
 data class ScaleData(
@@ -346,11 +348,11 @@ data class ScaleData(
 
 ------
 
-### **Heart Rate Monitor（心率带）**
+### **Heart Rate Monitor（心率帶）**
 
-⚠️注意：连接设备前，请先扫描二维码配对设备
+⚠️注意：連接設備前，請先掃描二維碼配對設備
 
-**代码示例**
+**代碼示例**
 
 ```kotlin
 import hk.ired.com.smartlearningsuite.BleViewModel
@@ -360,17 +362,17 @@ val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
 
-Button(onClick = { vm.connectHeartRateMonitor(mac) }) { Text("连接") }
-Button(onClick = { vm.disconnectHeartRateMonitor(mac) }) { Text("断开连接") }
+Button(onClick = { vm.connectHeartRateMonitor(mac) }) { Text("連接") }
+Button(onClick = { vm.disconnectHeartRateMonitor(mac) }) { Text("斷開連接") }
 
-// 显示实时心率与电量
-Text("连接: ${vm.heartRateMonitorData.isConnected}") // 是否已连接
-Text("心率: ${vm.heartRateMonitorData.heartRate} bpm") // 当前心率
-Text("电量: ${vm.heartRateMonitorData.batteryLevel}") // 电量（0-100%）
-Text("lastUpdatedTime: ${vm.heartRateMonitorData.lastUpdatedTime}") // 数据更新最后时间
+// 顯示實時心率與電量
+Text("連接: ${vm.heartRateMonitorData.isConnected}") // 是否已連接
+Text("心率: ${vm.heartRateMonitorData.heartRate} bpm") // 當前心率
+Text("電量: ${vm.heartRateMonitorData.batteryLevel}") // 電量（0-100%）
+Text("最後更新時間: ${vm.heartRateMonitorData.lastUpdatedTime}")
 ```
 
-**数据模型**
+**數據模型**
 
 ```kotlin
 data class HeartRateMonitorData(
@@ -384,11 +386,11 @@ data class HeartRateMonitorData(
 ------
 
 
-### **Rope（跳绳）**
+### **Rope（跳繩）**
 
-⚠️注意：连接设备前，请先扫描二维码配对设备
+⚠️注意：連接設備前，請先掃描二維碼配對設備
 
-**代码示例**
+**代碼示例**
 
 ```kotlin
 import hk.ired.com.smartlearningsuite.BleViewModel
@@ -398,27 +400,27 @@ val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
 
-// 连接 / 断开
-Button(onClick = { vm.connectRope(mac) }) { Text("连接") }
-Button(onClick = { vm.disconnectRope(mac) }) { Text("断开连接") }
+// 連接 / 斷開
+Button(onClick = { vm.connectRope(mac) }) { Text("連接") }
+Button(onClick = { vm.disconnectRope(mac) }) { Text("斷開連接") }
 
-// 设置模式（自由 / 时间 / 计数）
+// 設置模式（自由 / 時間 / 計數）
 Button(onClick = { vm.ropeSetMode(0, 0) }) { Text("自由模式") }
-Button(onClick = { vm.ropeSetMode(1, 60) }) { Text("时间模式(60秒)") }
-Button(onClick = { vm.ropeSetMode(2, 100) }) { Text("计数模式(100次)") }
+Button(onClick = { vm.ropeSetMode(1, 60) }) { Text("時間模式(60秒)") }
+Button(onClick = { vm.ropeSetMode(2, 100) }) { Text("計數模式(100次)") }
 
-// 显示跳绳数据
-Text(text = "连接状态: ${vm.ropeData.isConnected}") // 连接状态
-Text(text = "count: ${vm.ropeData.count}") // 跳绳次数
-Text(text = "mode: ${vm.ropeData.mode}") // 0: 自由模式, 1: 时间模式, 2: 计数模式
-Text(text = "status: ${vm.ropeData.status}") // 0: 未跳绳, 1: 跳绳中, 2: 暂停, 3: 结束
-Text(text = "setting: ${vm.ropeData.setting}") // 目标设置 (Time/Count)。其单位由 mode 决定 (1=秒, 2=次数)。
-Text(text = "batteryLevel: ${vm.ropeData.batteryLevel}") // 电池等级: 0: 0-5%, 1: 6-25%, 2: 26-50%, 3: 51-75%, 4: 76-100%
-Text(text = "time (sec): ${vm.ropeData.time}") // 时间（秒）
-Text(text = "lastUpdatedTime: ${vm.ropeData.lastUpdatedTime}") // 数据更新最后时间
+// 顯示跳繩數據
+Text(text = "連接狀態: ${vm.ropeData.isConnected}") // 連接狀態
+Text(text = "跳繩次數: ${vm.ropeData.count}")
+Text(text = "模式: ${vm.ropeData.mode}") // 0: 自由模式, 1: 時間模式, 2: 計數模式
+Text(text = "狀態: ${vm.ropeData.status}") // 0: 未跳繩, 1: 跳繩中, 2: 暫停, 3: 結束
+Text(text = "目標設置: ${vm.ropeData.setting}") // 其單位由模式決定 (1=秒, 2=次數)
+Text(text = "電池等級: ${vm.ropeData.batteryLevel}") // 0: 0-5%, 1: 6-25%, 2: 26-50%, 3: 51-75%, 4: 76-100%
+Text(text = "時間（秒）: ${vm.ropeData.time}")
+Text(text = "最後更新時間: ${vm.ropeData.lastUpdatedTime}")
 ```
 
-**数据模型**
+**數據模型**
 
 ```kotlin
 data class RopeData(
