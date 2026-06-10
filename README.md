@@ -1,6 +1,6 @@
 ---
 name: smart-learning-suite-android-sdk
-description: 提供針對智慧健康與運動設備（體溫計、血氧儀、血壓計、體重計、心率監測儀及跳繩）的 BLE (Bluetooth Low Energy) 整合方案。包含完整的 Android 權限配置，以及基於 Jetpack Compose 與 ViewModel 的 SDK (Software Development Kit) 程式碼範例。
+description: 提供針對智慧健康與運動設備（體溫計、血氧儀、血壓計、體重計、心率監測儀及跳繩）的 BLE 整合方案。包含完整的 Android 權限配置，以及基於 Jetpack Compose 與 ViewModel 的 SDK 程式碼範例。
 ---
 
 ## **1. 初始化項目**
