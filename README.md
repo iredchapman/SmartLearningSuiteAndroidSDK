@@ -47,7 +47,7 @@ dependencyResolutionManagement {
 kotlin = "2.2.21"
 ```
 
-3. 在 **app 级 build.gradle.kts** 中添加 SDK 和 Compose 依赖：
+3. 在 **app 级 build.gradle.kts** 中添加 SDK 、 Compose 依赖 和 缓存动态时间：
 
 ```kotlin
 dependencies {
@@ -73,6 +73,15 @@ dependencies {
    plugins {
        // ... 其他插件
        id("org.jetbrains.kotlin.plugin.compose") version "X.Y.Z" // 替换为兼容的编译器版本
+   }
+   ```
+
+
+4. 修改动态版本的缓存时间（全局生效）
+
+   ```kotlin
+   configurations.all {
+       resolutionStrategy.cacheDynamicVersionsFor(0, "seconds")
    }
    ```
 
