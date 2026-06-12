@@ -237,8 +237,24 @@ Button(onClick = { vm.connectOximeter(mac) }) { Text("連接") }
 Button(onClick = { vm.disconnectOximeter(mac) }) { Text("斷開") }
 
 Text(text = "連接狀態: ${vm.oximeterData.isConnected}")
-Text(text = "脈搏率: ${vm.oximeterData.pulse}")
-Text(text = "血氧飽和度: ${vm.oximeterData.spo2}")
+val currentPulse = vm.oximeterData.pulse
+if (currentPulse == 255) {
+    Text(
+        text = "脈搏率：正在檢測或手指未放好", 
+        color = Color.Red 
+    )
+} else {
+    Text(text = "脈搏率：$currentPulse bpm")
+}
+val currentSpO2 = vm.oximeterData.spo2
+if (currentSpO2 == 127) {
+    Text(
+        text = "血氧飽和度：正在檢測或手指未放好", 
+        color = Color.Red 
+    )
+} else {
+    Text(text = "血氧飽和度：$currentSpO2%")
+}
 Text(text = "灌注指數: ${vm.oximeterData.pi}")
 Text(text = "電池電量: ${vm.oximeterData.battery}%")
 Text(text = "最後更新時間: ${vm.oximeterData.lastUpdatedTime}")
