@@ -60,8 +60,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.3")
   
-      // ZXing 掃碼庫依賴
-    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+    // ZXing 掃碼庫依賴
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 }
 ```
 
@@ -79,7 +79,7 @@ dependencies {
    ```
 
 
-4. 修改動態版本的緩存時間（全局生效）
+5. 修改動態版本的緩存時間（全局生效）
 
    ```kotlin
    configurations.all {
@@ -87,7 +87,7 @@ dependencies {
    }
    ```
 
-5. 同步 Gradle
+6. 同步 Gradle
 
 ```
 Gradle Sync
@@ -101,24 +101,28 @@ Gradle Sync
 
 
 ```kotlin
-import androidx.core.content.ContextCompat
-import androidx.compose.runtime.LaunchedEffect
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.compose.rememberLauncherForActivityResult
+import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import android.Manifest
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+
+val context = LocalContext.current
+
 // 1. 定義需要申請的權限列表 (根據 Android 版本區分)
 val permissionsToRequest = remember {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        // Android 12+ (API 31+): 需要 BLUETOOTH_SCAN, BLUETOOTH_CONNECT 和 CAMERA
         arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
           	Manifest.permission.CAMERA
         )
     } else {
-        // Android 11 及以下: 需要定位權限才能掃描藍牙
         arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -131,12 +135,9 @@ val permissionsToRequest = remember {
 val launcher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.RequestMultiplePermissions()
 ) { permissions ->
-    // 這裏的代碼會在用戶點擊「允許」或「拒絕」後執行
     val allGranted = permissions.entries.all { it.value }
     if (allGranted) {
         Toast.makeText(context, "藍牙權限已授予", Toast.LENGTH_SHORT).show()
-        // 如果 ViewModel 中有需要手動觸發的掃描邏輯，可以在這裏調用
-        // vm.startScan()
     } else {
         Toast.makeText(context, "缺少藍牙權限，設備連接功能將無法使用", Toast.LENGTH_LONG).show()
     }
@@ -162,6 +163,16 @@ LaunchedEffect(Unit) {
 **代碼示例**
 
 ```kotlin
+import android.app.Application
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import hk.ired.com.smartlearningsuite.BleViewModel
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -172,19 +183,29 @@ val vm: BleViewModel = viewModel(
 )
 var mac by remember { mutableStateOf("") }
 
-// 初始化 ZXing 掃碼啟動器
 val barcodeLauncher = rememberLauncherForActivityResult(
     contract = ScanContract()
 ) { result ->
     result.contents?.let { scannedMac ->
-        // 驗證 MAC 地址格式 (例如: AA:BB:CC:DD:EE:FF)
         val macRegex = Regex("^([0-9A-Fa-f]{2}[:-])*([0-9A-Fa-f]{2})$")
         if (macRegex.matches(scannedMac) && scannedMac.length == 17) {
             mac = scannedMac.uppercase()
+        } else {
+            Toast.makeText(context, "掃描結果不是有效的 MAC 地址", Toast.LENGTH_SHORT).show()
         }
     }
 }
-// 連接 / 斷開
+
+Button(onClick = {
+    val options = ScanOptions().apply {
+        setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        setPrompt("請掃描設備二維碼")
+        setBeepEnabled(false)
+        setOrientationLocked(false)
+    }
+    barcodeLauncher.launch(options)
+}) { Text("掃描設備二維碼") }
+
 Button(onClick = { vm.connectThermometer(mac) }) { Text("連接") }
 Button(onClick = { vm.disconnectThermometer(mac) }) { Text("斷開") }
 
@@ -226,35 +247,55 @@ data class ThermometerData(
 **代碼示例**
 
 ```kotlin
+import android.app.Application
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import hk.ired.com.smartlearningsuite.BleViewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
 val context = LocalContext.current
 val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
+var mac by remember { mutableStateOf("") }
+
+val barcodeLauncher = rememberLauncherForActivityResult(
+    contract = ScanContract()
+) { result ->
+    result.contents?.let { scannedMac ->
+        val macRegex = Regex("^([0-9A-Fa-f]{2}[:-])*([0-9A-Fa-f]{2})$")
+        if (macRegex.matches(scannedMac) && scannedMac.length == 17) {
+            mac = scannedMac.uppercase()
+        } else {
+            Toast.makeText(context, "掃描結果不是有效的 MAC 地址", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+Button(onClick = {
+    val options = ScanOptions().apply {
+        setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        setPrompt("請掃描設備二維碼")
+        setBeepEnabled(false)
+        setOrientationLocked(false)
+    }
+    barcodeLauncher.launch(options)
+}) { Text("掃描設備二維碼") }
 
 Button(onClick = { vm.connectOximeter(mac) }) { Text("連接") }
 Button(onClick = { vm.disconnectOximeter(mac) }) { Text("斷開") }
 
 Text(text = "連接狀態: ${vm.oximeterData.isConnected}")
-val currentPulse = vm.oximeterData.pulse
-if (currentPulse == 255) {
-    Text(
-        text = "脈搏率：正在檢測或手指未放好", 
-        color = Color.Red 
-    )
-} else {
-    Text(text = "脈搏率：$currentPulse bpm")
-}
-val currentSpO2 = vm.oximeterData.spo2
-if (currentSpO2 == 127) {
-    Text(
-        text = "血氧飽和度：正在檢測或手指未放好", 
-        color = Color.Red 
-    )
-} else {
-    Text(text = "血氧飽和度：$currentSpO2%")
-}
+Text(text = "脈搏率: ${vm.oximeterData.pulse}")
+Text(text = "血氧飽和度: ${vm.oximeterData.spo2}")
 Text(text = "灌注指數: ${vm.oximeterData.pi}")
 Text(text = "電池電量: ${vm.oximeterData.battery}%")
 Text(text = "最後更新時間: ${vm.oximeterData.lastUpdatedTime}")
@@ -288,12 +329,48 @@ data class OximeterData(
 **代碼示例**
 
 ```kotlin
+import android.app.Application
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import hk.ired.com.smartlearningsuite.BleViewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
 val context = LocalContext.current
 val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
+var mac by remember { mutableStateOf("") }
+
+val barcodeLauncher = rememberLauncherForActivityResult(
+    contract = ScanContract()
+) { result ->
+    result.contents?.let { scannedMac ->
+        val macRegex = Regex("^([0-9A-Fa-f]{2}[:-])*([0-9A-Fa-f]{2})$")
+        if (macRegex.matches(scannedMac) && scannedMac.length == 17) {
+            mac = scannedMac.uppercase()
+        } else {
+            Toast.makeText(context, "掃描結果不是有效的 MAC 地址", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+Button(onClick = {
+    val options = ScanOptions().apply {
+        setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        setPrompt("請掃描設備二維碼")
+        setBeepEnabled(false)
+        setOrientationLocked(false)
+    }
+    barcodeLauncher.launch(options)
+}) { Text("掃描設備二維碼") }
 
 Button(onClick = { vm.connectBpm(mac) }) { Text("連接") }
 Button(onClick = { vm.disconnectBpm(mac) }) { Text("斷開") }
@@ -338,14 +415,49 @@ data class BpmData(
 **代碼示例**
 
 ```kotlin
+import android.app.Application
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import hk.ired.com.smartlearningsuite.BleViewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
 val context = LocalContext.current
 val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
+var mac by remember { mutableStateOf("") }
 
-// ⚠️ 無需連接，只需掃描廣播包即可獲取體重
+val barcodeLauncher = rememberLauncherForActivityResult(
+    contract = ScanContract()
+) { result ->
+    result.contents?.let { scannedMac ->
+        val macRegex = Regex("^([0-9A-Fa-f]{2}[:-])*([0-9A-Fa-f]{2})$")
+        if (macRegex.matches(scannedMac) && scannedMac.length == 17) {
+            mac = scannedMac.uppercase()
+        } else {
+            Toast.makeText(context, "掃描結果不是有效的 MAC 地址", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+Button(onClick = {
+    val options = ScanOptions().apply {
+        setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        setPrompt("請掃描設備二維碼")
+        setBeepEnabled(false)
+        setOrientationLocked(false)
+    }
+    barcodeLauncher.launch(options)
+}) { Text("掃描設備二維碼") }
+
 Button(onClick = { vm.scanScale(mac) }) { Text("掃描並讀取") }
 Button(onClick = { vm.stopScanScale {} }) { Text("停止掃描") }
 
@@ -358,7 +470,9 @@ Text(text = "最後更新時間: ${vm.scaleData.lastUpdatedTime}")
 
 ```kotlin
 data class ScaleData(
-    val weight: Double = 0.0, val isStable: Boolean = false, val lastUpdatedTime: String = ""
+    val weight: Double = 0.0,
+    val isStable: Boolean = false,
+    val lastUpdatedTime: String = ""
 )
 ```
 
@@ -371,20 +485,55 @@ data class ScaleData(
 **代碼示例**
 
 ```kotlin
+import android.app.Application
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import hk.ired.com.smartlearningsuite.BleViewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
 val context = LocalContext.current
 val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
+var mac by remember { mutableStateOf("") }
+
+val barcodeLauncher = rememberLauncherForActivityResult(
+    contract = ScanContract()
+) { result ->
+    result.contents?.let { scannedMac ->
+        val macRegex = Regex("^([0-9A-Fa-f]{2}[:-])*([0-9A-Fa-f]{2})$")
+        if (macRegex.matches(scannedMac) && scannedMac.length == 17) {
+            mac = scannedMac.uppercase()
+        } else {
+            Toast.makeText(context, "掃描結果不是有效的 MAC 地址", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+Button(onClick = {
+    val options = ScanOptions().apply {
+        setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        setPrompt("請掃描設備二維碼")
+        setBeepEnabled(false)
+        setOrientationLocked(false)
+    }
+    barcodeLauncher.launch(options)
+}) { Text("掃描設備二維碼") }
 
 Button(onClick = { vm.connectHeartRateMonitor(mac) }) { Text("連接") }
 Button(onClick = { vm.disconnectHeartRateMonitor(mac) }) { Text("斷開連接") }
 
-// 顯示實時心率與電量
-Text("連接: ${vm.heartRateMonitorData.isConnected}") // 是否已連接
-Text("心率: ${vm.heartRateMonitorData.heartRate} bpm") // 當前心率
-Text("電量: ${vm.heartRateMonitorData.batteryLevel}") // 電量（0-100%）
+Text("連接: ${vm.heartRateMonitorData.isConnected}")
+Text("心率: ${vm.heartRateMonitorData.heartRate} bpm")
+Text("電量: ${vm.heartRateMonitorData.batteryPercent}")
 Text("最後更新時間: ${vm.heartRateMonitorData.lastUpdatedTime}")
 ```
 
@@ -409,12 +558,48 @@ data class HeartRateMonitorData(
 **代碼示例**
 
 ```kotlin
+import android.app.Application
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import hk.ired.com.smartlearningsuite.BleViewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
 val context = LocalContext.current
 val vm: BleViewModel = viewModel(
     factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
 )
+var mac by remember { mutableStateOf("") }
+
+val barcodeLauncher = rememberLauncherForActivityResult(
+    contract = ScanContract()
+) { result ->
+    result.contents?.let { scannedMac ->
+        val macRegex = Regex("^([0-9A-Fa-f]{2}[:-])*([0-9A-Fa-f]{2})$")
+        if (macRegex.matches(scannedMac) && scannedMac.length == 17) {
+            mac = scannedMac.uppercase()
+        } else {
+            Toast.makeText(context, "掃描結果不是有效的 MAC 地址", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+Button(onClick = {
+    val options = ScanOptions().apply {
+        setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        setPrompt("請掃描設備二維碼")
+        setBeepEnabled(false)
+        setOrientationLocked(false)
+    }
+    barcodeLauncher.launch(options)
+}) { Text("掃描設備二維碼") }
 
 // 連接 / 斷開
 Button(onClick = { vm.connectRope(mac) }) { Text("連接") }
